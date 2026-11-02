@@ -905,9 +905,13 @@ void labelled_statement(char* label)
 void include_file(void)
 {
 	if(0 != depth) die("$[ inside a block", NULL);
-	char* name = need_token();
+	/* Raw tokens, so that a comment inside the command is refused. */
+	char* name = raw_token();
+	if(NULL == name) die("file ends inside $[", NULL);
 	if(has_dollar(name)) die("$ in an included file name", name);
-	if(!streq(need_token(), "$]")) die("$[ not closed by $]", name);
+	char* close = raw_token();
+	if(NULL == close) die("file ends inside $[", name);
+	if(!streq(close, "$]")) die("$[ not closed by $]", name);
 	int i;
 	for(i = 0; i < file_name_count; i = i + 1)
 	{

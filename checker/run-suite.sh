@@ -12,18 +12,21 @@ checker=$1
 suite=$2
 failed=0
 
+# Only exit status 1 is a refusal. A crash on a bad database is not one.
 check() {
   expected=$1
   database=$2
-  if (cd "$suite" && "$checker" "$database") >/dev/null 2>&1; then
-    got=accept
-  else
-    got=refuse
-  fi
+  status=0
+  output=$(cd "$suite" && "$checker" "$database" 2>&1) || status=$?
+  case "$status" in
+    0) got=accept ;;
+    1) got=refuse ;;
+    *) got="crash, status $status" ;;
+  esac
   if [ "$got" = "$expected" ]; then
     echo "ok      $expected $database"
   else
-    echo "FAILED  wanted $expected, got $got: $database"
+    echo "FAILED  wanted $expected, got $got: $database: $output"
     failed=$((failed + 1))
   fi
 }

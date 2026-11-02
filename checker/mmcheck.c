@@ -195,7 +195,9 @@ int perm_alloc(int n)
 void load_file(char* name)
 {
 	if(file_top >= MAX_FILES) die("files nested too deeply", name);
-	FILE* f = fopen(name, "r");
+	/* Binary, or a C library that translates CRLF hands back fewer bytes
+	 * than the length says. */
+	FILE* f = fopen(name, "rb");
 	if(NULL == f) die("cannot read file", name);
 
 	/* fgetc reports a failed read as end of file, so the length comes first

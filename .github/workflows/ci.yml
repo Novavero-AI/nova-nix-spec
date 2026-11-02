@@ -34,10 +34,31 @@ jobs:
             fi
           done
 
+  # The checker's own build on each operating system nova-nix ships for. The
+  # Windows job keeps Git's CRLF checkout, so the databases there carry CRLF.
   host:
-    name: Checker under gcc and sanitizers
-    runs-on: ubuntu-latest
+    name: Checker under ${{ matrix.cc }} on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            cc: gcc
+            exe: mmcheck
+            py: python3
+          - os: macos-latest
+            cc: clang
+            exe: mmcheck
+            py: python3
+          - os: windows-latest
+            cc: clang
+            exe: mmcheck.exe
+            py: python
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
 
@@ -50,22 +71,32 @@ jobs:
       - name: Build with warnings as errors
         run: |
           mkdir build
-          gcc -std=c99 -O2 -Wall -Wextra -Wpedantic -Wstrict-prototypes -Wshadow -Werror \
-            -o build/mmcheck checker/mmcheck.c
-          gcc -std=c99 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined \
-            -o build/mmcheck-san checker/mmcheck.c
+          defines=""
+          if [ "$RUNNER_OS" = Windows ]; then defines="-D_CRT_SECURE_NO_WARNINGS"; fi
+          ${{ matrix.cc }} -std=c99 -O2 -Wall -Wextra -Wpedantic -Wstrict-prototypes -Wshadow -Werror \
+            $defines -o build/${{ matrix.exe }} checker/mmcheck.c
 
       - name: Suite
-        run: checker/run-suite.sh "$PWD/build/mmcheck" "$PWD/metamath-test"
-
-      - name: Suite under sanitizers
-        run: checker/run-suite.sh "$PWD/build/mmcheck-san" "$PWD/metamath-test"
+        run: checker/run-suite.sh "$PWD/build/${{ matrix.exe }}" "$PWD/metamath-test"
 
       - name: Rule cases
-        run: python3 -I checker/tests/compare_rules.py "$PWD/build/mmcheck"
+        run: |
+          root=$(pwd -W 2>/dev/null || pwd)
+          ${{ matrix.py }} -I checker/tests/compare_rules.py "$root/build/${{ matrix.exe }}"
+
+      - name: Build under sanitizers
+        if: runner.os != 'Windows'
+        run: |
+          ${{ matrix.cc }} -std=c99 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined \
+            -o build/mmcheck-san checker/mmcheck.c
+
+      - name: Suite under sanitizers
+        if: runner.os != 'Windows'
+        run: checker/run-suite.sh "$PWD/build/mmcheck-san" "$PWD/metamath-test"
 
       - name: A test notices each check being removed
-        run: python3 -I checker/tests/kill_checks.py "$PWD/metamath-test" "$RUNNER_TEMP/variants"
+        if: runner.os != 'Windows'
+        run: ${{ matrix.py }} -I checker/tests/kill_checks.py "$PWD/metamath-test" "$RUNNER_TEMP/variants"
 
   linux:
     name: Checker built by M2-Planet on Linux

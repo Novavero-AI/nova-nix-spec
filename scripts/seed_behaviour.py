@@ -9,6 +9,7 @@ root, where `lake env lean --run experiments/Decode.lean` works.
 """
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -46,12 +47,12 @@ def run_seed(seed, data, directory):
     return output.read_bytes()
 
 
-def run_decode(data, directory):
+def run_decode(lake, data, directory):
     source = pathlib.Path(directory, "in")
     output = pathlib.Path(directory, "spec")
     source.write_bytes(data)
     subprocess.run(
-        ["lake", "env", "lean", "--run", "experiments/Decode.lean", str(source), str(output)],
+        [lake, "env", "lean", "--run", "experiments/Decode.lean", str(source), str(output)],
         check=True,
         capture_output=True,
         timeout=300,
@@ -63,6 +64,10 @@ def main():
     if len(sys.argv) != 3:
         sys.exit("usage: seed_behaviour.py SEED KNOWN")
     seed = os.path.abspath(sys.argv[1])
+    # which applies each system's own lookup, such as PATHEXT on Windows.
+    lake = shutil.which("lake")
+    if lake is None:
+        sys.exit("lake is not on PATH")
     known = set() if sys.argv[2] == "none" else set(sys.argv[2].split(","))
     unknown = known - set(CASES)
     if unknown:
@@ -71,7 +76,7 @@ def main():
     with tempfile.TemporaryDirectory() as directory:
         for name, data in CASES.items():
             got = run_seed(seed, data, directory)
-            want = run_decode(data, directory)
+            want = run_decode(lake, data, directory)
             differs = got != want
             if differs and name in known:
                 print(f"known   {name}: seed {got!r}, decode {want!r}")

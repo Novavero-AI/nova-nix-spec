@@ -58,3 +58,37 @@ jobs:
           else
             echo "no proof was produced"
           fi
+
+  # cc_x86 compiles M2-Planet in every stage0 bootstrap, so a change gcc accepts
+  # can still break the chain. This builds the fork's M2-Planet the way the
+  # Windows ladder does, starting from the seed.
+  bootstrap:
+    name: built by cc_x86 from the seed
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      # The runner's Git rewrites line endings on checkout, and the chain has
+      # to read the bytes that were committed.
+      - name: Keep committed line endings
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Novavero-AI/stage0-pe32
+          ref: 6e5acc5c37ecfa1cde1ced7bce07ae8904f6958a
+          path: stage0-pe32
+          submodules: recursive
+
+      - name: Take M2-Planet out of the ladder
+        shell: bash
+        run: rm -rf stage0-pe32/M2-Planet
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Novavero-AI/M2-Planet
+          ref: ${{ inputs.ref }}
+          path: stage0-pe32/M2-Planet
+
+      - name: Build the chain from the seed
+        shell: cmd
+        run: stage0-pe32\x86\mescc-tools-mini.cmd

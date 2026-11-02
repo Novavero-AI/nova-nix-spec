@@ -11,6 +11,7 @@ permissions:
 
 env:
   STAGE0_PE32_REF: 6e5acc5c37ecfa1cde1ced7bce07ae8904f6958a
+  BOOTSTRAP_SEEDS_REF: cedec6b8066d1db229b6c77d42d120a23c6980ed
   METAMATH_TEST_REF: 5758bf781bab662d4b31c7f72ac4dedea74fcb0f
   SET_MM_REF: 1c6aea1d3bd49e470ef229eee2632944b98af3b9
   SET_MM_SHA256: 7a63aada1c14dbef0f683db6bd59ee62d582b61ef2ee013d224f04f38c734d33
@@ -28,11 +29,32 @@ jobs:
 
       - name: No proof rests on sorry
         run: |
-          for file in NixLayer.lean Trust.lean Metamath.lean; do
+          for file in NixLayer.lean Trust.lean Metamath.lean Hex0.lean Seed.lean; do
             if lake env lean "$file" | grep sorryAx; then
               exit 1
             fi
           done
+
+      # Seed.lean's theorems are about the arrays in Seed/Bytes.lean, so the
+      # arrays have to be the pinned upstream files exactly.
+      - uses: actions/checkout@v7
+        with:
+          repository: oriansj/bootstrap-seeds
+          ref: ${{ env.BOOTSTRAP_SEEDS_REF }}
+          path: bootstrap-seeds
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Novavero-AI/stage0-pe32
+          ref: ${{ env.STAGE0_PE32_REF }}
+          path: stage0-pe32
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - name: Seed bytes are the pinned files
+        run: python -I scripts/seed_bytes.py bootstrap-seeds stage0-pe32 | diff -u Seed/Bytes.lean -
 
   # The checker's own build on each operating system nova-nix ships for. The
   # Windows job keeps Git's CRLF checkout, so the databases there carry CRLF.

@@ -1,5 +1,5 @@
 name = "nova-nix-spec"
-defaultTargets = ["NixLayer", "Trust", "Metamath"]
+defaultTargets = ["NixLayer", "Trust", "Metamath", "Hex0", "Seed"]
 
 [[lean_lib]]
 name = "NixLayer"
@@ -9,3 +9,9 @@ name = "Trust"
 
 [[lean_lib]]
 name = "Metamath"
+
+[[lean_lib]]
+name = "Hex0"
+
+[[lean_lib]]
+name = "Seed"

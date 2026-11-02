@@ -1,3 +1,8 @@
+/-! hex0 as a pure function: the rule a hex0 binary follows, written so that
+proofs can be about it. Two hex digits make a byte, and `#` or `;` starts a
+comment that runs to the end of the line. -/
+namespace Hex0
+
 /-- A hex digit's value, if the byte is one. -/
 def hexValue (c : UInt8) : Option UInt8 :=
   if c >= 48 && c <= 57 then some (c - 48)
@@ -28,7 +33,6 @@ def step (s : St) (c : UInt8) : St :=
 def decode (input : List UInt8) : List UInt8 :=
   (input.foldl step {}).out.reverse
 
--- First proofs, each checked by Lean's kernel.
 
 /-- Empty input gives empty output. -/
 theorem decode_nil : decode [] = [] := rfl
@@ -74,12 +78,4 @@ theorem decode_comment_line (pre post body : List UInt8)
   simp only [decode, List.foldl_append]
   rw [line]
 
-def main (args : List String) : IO UInt32 := do
-  match args with
-  | [input, output] =>
-    let bytes <- IO.FS.readBinFile input
-    IO.FS.writeBinFile output (ByteArray.mk (decode bytes.toList).toArray)
-    return 0
-  | _ =>
-    IO.eprintln "usage: decode INPUT OUTPUT"
-    return 1
+end Hex0

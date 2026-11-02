@@ -48,9 +48,13 @@ jobs:
           - os: macos-latest
             cc: clang
             exe: mmcheck
+          # MSVC's C library marks fopen deprecated in favour of fopen_s, which
+          # is C11's optional Annex K and absent from glibc and M2libc. This is
+          # Microsoft's documented switch for ISO C code.
           - os: windows-latest
             cc: clang
             exe: mmcheck.exe
+            cflags: -D_CRT_SECURE_NO_WARNINGS
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -73,7 +77,7 @@ jobs:
         run: |
           mkdir build
           ${{ matrix.cc }} -std=c99 -O2 -Wall -Wextra -Wpedantic -Wstrict-prototypes -Wshadow -Werror \
-            -o build/${{ matrix.exe }} checker/mmcheck.c
+            ${{ matrix.cflags }} -o build/${{ matrix.exe }} checker/mmcheck.c
 
       - name: Suite
         run: checker/run-suite.sh build/${{ matrix.exe }} metamath-test

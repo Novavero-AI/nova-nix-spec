@@ -199,12 +199,14 @@ void load_file(char* name)
 	if(NULL == f) die("cannot read file", name);
 
 	/* fgetc reports a failed read as end of file, so the length comes first
-	 * and reading has to reach it exactly. */
-	if(0 != fseek(f, 0, SEEK_END)) die("cannot read file", name);
+	 * and reading has to reach it exactly. Each seek is judged by ftell: M2libc's
+	 * fseek returns the new position where C returns 0. */
+	fseek(f, 0, SEEK_END);
 	long n = ftell(f);
 	if(0 > n) die("cannot read file", name);
 	if(n > MAX_FILE_BYTES) die("file too large", name);
-	if(0 != fseek(f, 0, SEEK_SET)) die("cannot read file", name);
+	fseek(f, 0, SEEK_SET);
+	if(0 != ftell(f)) die("cannot read file", name);
 
 	char* b = malloc(n + 1);
 	if(NULL == b) die("out of memory", name);

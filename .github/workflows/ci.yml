@@ -56,6 +56,55 @@ jobs:
       - name: Seed bytes are the pinned files
         run: python -I scripts/seed_bytes.py bootstrap-seeds stage0-pe32 | diff -u Seed/Bytes.lean -
 
+  # Each real hex0 seed and Hex0.decode, run on the same inputs. The upstream
+  # Linux seed's range check is cmp al,7 where 6 would bound A to F, so it also
+  # takes G and g as a digit worth 16, and decode does not.
+  seeds:
+    name: hex0 seed against Hex0.decode on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            seed: bootstrap-seeds/POSIX/x86/hex0-seed
+            known: G before a digit,g before a digit,G after a digit
+          - os: windows-latest
+            seed: stage0-pe32/bootstrap-seeds/PE32/i386/hex0-seed.exe
+            known: none
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # The runner's Git rewrites line endings on checkout, and the seeds have
+      # to be the bytes that were committed.
+      - name: Keep committed line endings
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: oriansj/bootstrap-seeds
+          ref: ${{ env.BOOTSTRAP_SEEDS_REF }}
+          path: bootstrap-seeds
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Novavero-AI/stage0-pe32
+          ref: ${{ env.STAGE0_PE32_REF }}
+          path: stage0-pe32
+
+      - uses: leanprover/lean-action@v1
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
+      - name: Seed and decode agree
+        run: python -I scripts/seed_behaviour.py "${{ matrix.seed }}" "${{ matrix.known }}"
+
   # The checker's own build on each operating system nova-nix ships for. The
   # Windows job keeps Git's CRLF checkout, so the databases there carry CRLF.
   host:

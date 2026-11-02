@@ -1,15 +1,14 @@
 """Runs a real hex0 seed and Hex0.decode on the same inputs and compares them.
 
-Usage: seed_behaviour.py SEED KNOWN
+Usage: seed_behaviour.py SEED DECODE KNOWN
 
-SEED is the seed binary. KNOWN names the inputs on which this seed is known to
-differ from decode, as a comma-separated list, or "none". Any other difference
-fails, and so does a known one that has gone away. Run from the repository
-root, where `lake env lean --run experiments/Decode.lean` works.
+SEED is the seed binary, and DECODE is `lake build decode`'s executable.
+KNOWN names the inputs on which this seed is known to differ from decode, as a
+comma-separated list, or "none". Any other difference fails, and so does a
+known one that has gone away.
 """
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -47,28 +46,20 @@ def run_seed(seed, data, directory):
     return output.read_bytes()
 
 
-def run_decode(lake, data, directory):
+def run_decode(decode, data, directory):
     source = pathlib.Path(directory, "in")
     output = pathlib.Path(directory, "spec")
     source.write_bytes(data)
-    subprocess.run(
-        [lake, "env", "lean", "--run", "experiments/Decode.lean", str(source), str(output)],
-        check=True,
-        capture_output=True,
-        timeout=300,
-    )
+    subprocess.run([decode, str(source), str(output)], check=True, capture_output=True, timeout=60)
     return output.read_bytes()
 
 
 def main():
-    if len(sys.argv) != 3:
-        sys.exit("usage: seed_behaviour.py SEED KNOWN")
+    if len(sys.argv) != 4:
+        sys.exit("usage: seed_behaviour.py SEED DECODE KNOWN")
     seed = os.path.abspath(sys.argv[1])
-    # which applies each system's own lookup, such as PATHEXT on Windows.
-    lake = shutil.which("lake")
-    if lake is None:
-        sys.exit("lake is not on PATH")
-    known = set() if sys.argv[2] == "none" else set(sys.argv[2].split(","))
+    decode = os.path.abspath(sys.argv[2])
+    known = set() if sys.argv[3] == "none" else set(sys.argv[3].split(","))
     unknown = known - set(CASES)
     if unknown:
         sys.exit(f"no such cases: {sorted(unknown)}")
@@ -76,7 +67,7 @@ def main():
     with tempfile.TemporaryDirectory() as directory:
         for name, data in CASES.items():
             got = run_seed(seed, data, directory)
-            want = run_decode(lake, data, directory)
+            want = run_decode(decode, data, directory)
             differs = got != want
             if differs and name in known:
                 print(f"known   {name}: seed {got!r}, decode {want!r}")

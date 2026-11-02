@@ -1,6 +1,6 @@
 import Hex0
 
-/-- Writes what hex0 makes of a file: `lake env lean --run experiments/Decode.lean IN OUT`. -/
+/-- Writes what hex0 makes of a file. Built as `decode`: `lake build decode`. -/
 def main (args : List String) : IO UInt32 := do
   match args with
   | [input, output] =>

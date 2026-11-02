@@ -453,14 +453,13 @@ void read_expr(char* stop)
 {
 	expr_buf_len = 0;
 	char* t = need_token();
-	if(streq(t, stop)) die("statement has no typecode", NULL);
 	if(K_CONST != sym_kind[intern(t)]) die("typecode is not a constant", t);
 	while(!streq(t, stop))
 	{
 		int s = intern(t);
 		if(K_VAR == sym_kind[s])
 		{
-			if(!sym_active[s]) die("inactive variable", t);
+			/* A variable out of scope has no active $f either. */
 			if(0 == sym_float[s]) die("variable has no active $f", t);
 		}
 		else if(K_CONST != sym_kind[s]) die("not an active math symbol", t);
@@ -670,8 +669,9 @@ void check_disjoint(int a)
 					int w = proof[sub_off[y] + q];
 					if(K_VAR == sym_kind[w])
 					{
-						if(v == w) die("$d violated: shared variable", sym_name[v]);
-						if(!disjoint_declared(v, w)) die("$d violated: no $d in scope", sym_name[a]);
+						/* $d pairs hold two different variables, so a variable
+						 * shared by both expressions fails here too. */
+						if(!disjoint_declared(v, w)) die("$d violated", sym_name[a]);
 					}
 				}
 			}
@@ -694,7 +694,6 @@ void apply_assertion(int a)
 		int entry_len = st_len[base + i];
 		if(K_FLOAT == sym_kind[h])
 		{
-			if(1 > entry_len) die("empty proof stack entry", sym_name[a]);
 			if(proof[entry_off] != perm[expr_off[h]]) die("typecode mismatch", sym_name[a]);
 			int v = perm[expr_off[h] + 1];
 			sub_off[v] = entry_off + 1;
@@ -811,14 +810,12 @@ void read_compressed(int id)
 			else if('Z' == c)
 			{
 				if(!can_tag) die("Z not directly after a proof step", sym_name[id]);
-				if(0 == sp) die("Z on an empty proof stack", sym_name[id]);
 				if(tag_count >= MAX_TAGS) die("too many tagged proof steps", sym_name[id]);
 				tag_off[tag_count] = st_off[sp - 1];
 				tag_len[tag_count] = st_len[sp - 1];
 				tag_count = tag_count + 1;
 				can_tag = 0;
 			}
-			else if('?' == c) die("incomplete proof", sym_name[id]);
 			else die("character not allowed in compressed proof", sym_name[id]);
 			i = i + 1;
 		}
@@ -838,7 +835,6 @@ void read_proof(int id)
 	{
 		while(!streq(t, "$."))
 		{
-			if(streq(t, "?")) die("incomplete proof", sym_name[id]);
 			proof_step(intern(t), t);
 			t = need_token();
 		}

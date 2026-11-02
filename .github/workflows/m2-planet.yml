@@ -1,9 +1,10 @@
 name: M2-Planet
 
-# Runs M2-Planet's own test suite at a ref of the fork, on the two
-# architectures a hosted runner executes, the way upstream's CI does. The
-# self-host proof is printed because it can only be produced by running the
-# self-built compiler, so a change to the compiler needs its hash from here.
+# Runs M2-Planet's own test suite at a ref of the fork on each architecture
+# upstream's CI covers. Architectures a hosted runner cannot execute natively
+# run under qemu-user, which is how upstream runs RISC-V. The self-host proof is
+# printed because it can only be produced by running the self-built compiler,
+# so a change to the compiler needs its hash from here.
 on:
   workflow_dispatch:
     inputs:
@@ -20,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [amd64, x86]
+        arch: [amd64, x86, aarch64, armv7l, riscv64, riscv32]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -29,6 +30,12 @@ jobs:
           repository: Novavero-AI/M2-Planet
           ref: ${{ inputs.ref }}
           submodules: recursive
+
+      - name: Install qemu-user
+        if: matrix.arch != 'amd64' && matrix.arch != 'x86'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user qemu-user-binfmt
 
       - name: Install mescc-tools
         run: |

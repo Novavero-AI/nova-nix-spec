@@ -5,6 +5,7 @@ Exit status other than 0 or 1 is a crash, and a crash is never a refusal.
 Usage: compare_rules.py CHECKER
 """
 import importlib.util
+import os
 import pathlib
 import subprocess
 import sys
@@ -16,7 +17,6 @@ KNOWN_DIFFERENCES = {
     "included file ends in bare close": "mmcheck takes end of file as white space",
     "include close at bare eof": "mmcheck takes end of file as white space",
     "include another spelling of the same file": "mmcheck compares names, as the book allows",
-    "include directory": "the C subset cannot tell a directory from an empty file",
 }
 
 
@@ -39,10 +39,22 @@ def status_of(checker, files):
         ).returncode
 
 
+def pipe_is_refused(checker):
+    """A pipe has no length to read up to, so a failed read could pass as its end."""
+    if not os.path.exists("/dev/stdin"):
+        return True
+    return subprocess.run(
+        [checker, "/dev/stdin"], input=b"$c a $.\n", capture_output=True, timeout=60
+    ).returncode == 1
+
+
 def main():
     checker = sys.argv[1]
     cases = [case for case in load_cases() if case[0] not in KNOWN_DIFFERENCES]
     failed = 0
+    if not pipe_is_refused(checker):
+        failed += 1
+        print("FAILED a pipe was not refused")
     for name, files, expected in cases:
         status = status_of(checker, files)
         if status != (0 if expected is None else 1):

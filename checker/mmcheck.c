@@ -38,7 +38,7 @@
 #define MAX_TAGS 65536
 #define MAX_LABELS 65536
 #define MAX_STEP 16777216 /* Small enough that 20 * MAX_STEP fits 31 bits */
-#define FILE_CHUNK 1048576
+#define MAX_FILE_BYTES 1073741823
 
 /* What a token has been declared as. */
 #define K_NONE 0
@@ -198,33 +198,29 @@ void load_file(char* name)
 	FILE* f = fopen(name, "r");
 	if(NULL == f) die("cannot read file", name);
 
-	int cap = FILE_CHUNK;
-	int n = 0;
-	char* b = malloc(cap);
+	/* fgetc reports a failed read as end of file, so the length comes first
+	 * and reading has to reach it exactly. */
+	if(0 != fseek(f, 0, SEEK_END)) die("cannot read file", name);
+	long n = ftell(f);
+	if(0 > n) die("cannot read file", name);
+	if(n > MAX_FILE_BYTES) die("file too large", name);
+	if(0 != fseek(f, 0, SEEK_SET)) die("cannot read file", name);
+
+	char* b = malloc(n + 1);
 	if(NULL == b) die("out of memory", name);
-	int c = fgetc(f);
-	while(EOF != c)
+	long i;
+	for(i = 0; i < n; i = i + 1)
 	{
+		int c = fgetc(f);
+		if(EOF == c) die("file ended before its length", name);
 		if(!is_space(c))
 		{
 			if(33 > c) die("character not allowed in file", name);
 			if(126 < c) die("character not allowed in file", name);
 		}
-		if(n + 1 >= cap)
-		{
-			if(cap > 536870912) die("file too large", name);
-			char* bigger = malloc(cap * 2);
-			if(NULL == bigger) die("out of memory", name);
-			int i;
-			for(i = 0; i < n; i = i + 1) bigger[i] = b[i];
-			free(b);
-			b = bigger;
-			cap = cap * 2;
-		}
-		b[n] = c;
-		n = n + 1;
-		c = fgetc(f);
+		b[i] = c;
 	}
+	if(EOF != fgetc(f)) die("file ran past its length", name);
 	fclose(f);
 	b[n] = 0;
 

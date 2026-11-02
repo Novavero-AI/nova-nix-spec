@@ -3,7 +3,8 @@
 A surviving variant gets every verdict right with that check gone, so the check
 is untested or redundant. Variants build with sanitizers, so a memory guard
 counts as noticed when removing it faults. Capacity limits are left out, since
-reaching them takes huge inputs, and so are the invariants nothing can reach.
+reaching them takes huge inputs, as are invariants nothing can reach and the
+checks that need a read to fail partway through a file.
 
 Usage: kill_checks.py SUITE_DIR WORK_DIR
 """
@@ -18,7 +19,7 @@ import tempfile
 
 LEFT_OUT = re.compile(
     r"too many|too deep|too deeply|exhausted|too long|too large|out of memory|cannot read"
-    r"|no substitution"
+    r"|no substitution|before its length|past its length"
 )
 SANITIZER_STATUS = 99
 SANITIZED_ENV = dict(

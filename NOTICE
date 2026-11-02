@@ -4,9 +4,3 @@ Copyright 2026 Novavero AI Inc. and contributors
 This product is licensed under the Apache License, Version 2.0.
 A copy of the License is provided in the LICENSE file, or at
 http://www.apache.org/licenses/LICENSE-2.0
-
-Seed/Bytes.lean is not covered by that License. It copies the hex0 seeds and
-their annotated sources from bootstrap-seeds and stage0-pe32, and keeps their
-terms: the GNU General Public License, version 3 or later, with stage0-pe32's
-additional permission for the files that come from it. Their copyright lines
-are at the top of Seed/Bytes.lean, and the license texts are in LICENSES/.

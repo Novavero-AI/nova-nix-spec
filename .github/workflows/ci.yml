@@ -12,6 +12,9 @@ permissions:
 env:
   STAGE0_PE32_REF: 6e5acc5c37ecfa1cde1ced7bce07ae8904f6958a
   METAMATH_TEST_REF: 5758bf781bab662d4b31c7f72ac4dedea74fcb0f
+  SET_MM_REF: 1c6aea1d3bd49e470ef229eee2632944b98af3b9
+  SET_MM_SHA256: 7a63aada1c14dbef0f683db6bd59ee62d582b61ef2ee013d224f04f38c734d33
+  MUTANT_DIVISOR: 3
 
 jobs:
   lean:
@@ -34,7 +37,7 @@ jobs:
   host:
     name: Checker under gcc and sanitizers
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -58,10 +61,16 @@ jobs:
       - name: Suite under sanitizers
         run: checker/run-suite.sh "$PWD/build/mmcheck-san" "$PWD/metamath-test"
 
+      - name: Rule cases
+        run: python3 -I checker/tests/compare_rules.py "$PWD/build/mmcheck"
+
+      - name: A test notices each check being removed
+        run: python3 -I checker/tests/kill_checks.py "$PWD/metamath-test" "$RUNNER_TEMP/variants"
+
   linux:
     name: Checker built by M2-Planet on Linux
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -98,34 +107,25 @@ jobs:
       - name: Suite
         run: checker/run-suite.sh "$PWD/build/mmcheck-x86" "$PWD/metamath-test"
 
-      - name: Read set.mm
-        working-directory: metamath-test
-        run: time ../build/mmcheck-x86 set.mm
+      - name: Rule cases
+        run: python3 -I checker/tests/compare_rules.py "$PWD/build/mmcheck-x86"
 
-      - name: Show where it crashed
-        if: failure()
+      - name: Corrupted databases
+        run: python3 -I checker/tests/compare_mutants.py 1 "$PWD/build/mmcheck-x86" "$PWD/metamath-test" "$MUTANT_DIVISOR"
+
+      - name: Fetch a current set.mm
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq gdb
-          cd stage0-pe32/M2-Planet
-          tools=../mescc-tools/bin
-          ./bin/M2-Planet --architecture x86 --expand-includes --debug \
-            "$GITHUB_WORKSPACE/checker/mmcheck.c" -o /tmp/debug.M1
-          "$tools/blood-elf" -f /tmp/debug.M1 --little-endian --entry _start -o /tmp/footer.M1
-          "$tools/M1" --little-endian --architecture x86 -f M2libc/x86/x86_defs.M1 \
-            -f M2libc/x86/libc-full.M1 -f /tmp/debug.M1 -f /tmp/footer.M1 -o /tmp/debug.hex2
-          "$tools/hex2" --little-endian --architecture x86 --base-address 0x08048000 \
-            -f M2libc/x86/ELF-x86-debug.hex2 -f /tmp/debug.hex2 -o /tmp/mmcheck-debug
-          cd "$GITHUB_WORKSPACE/metamath-test"
-          for database in hol.mm big-unifier.mm peano-fixed.mm; do
-            gdb -q -batch -ex run -ex bt -ex 'info registers eip eax ebx ecx esp ebp' \
-              -ex 'x/8i $eip-12' --args /tmp/mmcheck-debug "$database" 2>&1 | tail -32
-          done
+          curl -sSfL --retry 3 -o set-current.mm \
+            "https://raw.githubusercontent.com/metamath/set.mm/$SET_MM_REF/set.mm"
+          echo "$SET_MM_SHA256  set-current.mm" | sha256sum -c -
+
+      - name: Check a current set.mm
+        run: time build/mmcheck-x86 set-current.mm
 
   windows:
     name: Checker built from the seed on Windows
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       # The runner's Git rewrites line endings on checkout, and the chain has
       # to read the bytes that were committed.
@@ -170,9 +170,23 @@ jobs:
         shell: bash
         run: checker/run-suite.sh "$PWD/build/mmcheck.exe" "$PWD/metamath-test"
 
-      - name: Read set.mm
+      - name: Rule cases
         shell: pwsh
-        working-directory: metamath-test
+        run: python -I checker/tests/compare_rules.py "$PWD/build/mmcheck.exe"
+
+      - name: Corrupted databases
+        shell: pwsh
+        run: python -I checker/tests/compare_mutants.py 1 "$PWD/build/mmcheck.exe" "$PWD/metamath-test" $env:MUTANT_DIVISOR
+
+      - name: Fetch a current set.mm
+        shell: bash
         run: |
-          Measure-Command { ..\build\mmcheck.exe set.mm | Out-Host }
+          curl -sSfL --retry 3 -o set-current.mm \
+            "https://raw.githubusercontent.com/metamath/set.mm/$SET_MM_REF/set.mm"
+          echo "$SET_MM_SHA256  set-current.mm" | sha256sum -c -
+
+      - name: Check a current set.mm
+        shell: pwsh
+        run: |
+          Measure-Command { build\mmcheck.exe set-current.mm | Out-Host }
           if ($LASTEXITCODE -ne 0) { throw "set.mm refused" }

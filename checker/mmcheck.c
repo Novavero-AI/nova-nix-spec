@@ -133,23 +133,8 @@ int* new_ints(int n)
 
 void put_int(int n)
 {
-	char digits[32];
-	int i = 0;
-	if(0 == n) fputs("0", stdout);
-	while(0 < n)
-	{
-		digits[i] = '0' + (n % 10);
-		n = n / 10;
-		i = i + 1;
-	}
-	char one[2];
-	one[1] = 0;
-	while(0 < i)
-	{
-		i = i - 1;
-		one[0] = digits[i];
-		fputs(one, stdout);
-	}
+	if(9 < n) put_int(n / 10);
+	fputc('0' + (n % 10), stdout);
 }
 
 int streq(char* a, char* b)

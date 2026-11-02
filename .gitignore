@@ -1,3 +1,5 @@
 .lake/
 build/
 __pycache__/
+# Written by scripts/seed_bytes.py from the pinned seed checkouts.
+/Seed/Bytes.lean

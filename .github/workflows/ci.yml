@@ -45,15 +45,12 @@ jobs:
           - os: ubuntu-latest
             cc: gcc
             exe: mmcheck
-            py: python3
           - os: macos-latest
             cc: clang
             exe: mmcheck
-            py: python3
           - os: windows-latest
             cc: clang
             exe: mmcheck.exe
-            py: python
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -68,21 +65,21 @@ jobs:
           ref: ${{ env.METAMATH_TEST_REF }}
           path: metamath-test
 
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+
       - name: Build with warnings as errors
         run: |
           mkdir build
-          defines=""
-          if [ "$RUNNER_OS" = Windows ]; then defines="-D_CRT_SECURE_NO_WARNINGS"; fi
           ${{ matrix.cc }} -std=c99 -O2 -Wall -Wextra -Wpedantic -Wstrict-prototypes -Wshadow -Werror \
-            $defines -o build/${{ matrix.exe }} checker/mmcheck.c
+            -o build/${{ matrix.exe }} checker/mmcheck.c
 
       - name: Suite
-        run: checker/run-suite.sh "$PWD/build/${{ matrix.exe }}" "$PWD/metamath-test"
+        run: checker/run-suite.sh build/${{ matrix.exe }} metamath-test
 
       - name: Rule cases
-        run: |
-          root=$(pwd -W 2>/dev/null || pwd)
-          ${{ matrix.py }} -I checker/tests/compare_rules.py "$root/build/${{ matrix.exe }}"
+        run: python -I checker/tests/compare_rules.py build/${{ matrix.exe }}
 
       - name: Build under sanitizers
         if: runner.os != 'Windows'
@@ -92,11 +89,11 @@ jobs:
 
       - name: Suite under sanitizers
         if: runner.os != 'Windows'
-        run: checker/run-suite.sh "$PWD/build/mmcheck-san" "$PWD/metamath-test"
+        run: checker/run-suite.sh build/mmcheck-san metamath-test
 
       - name: A test notices each check being removed
         if: runner.os != 'Windows'
-        run: ${{ matrix.py }} -I checker/tests/kill_checks.py "$PWD/metamath-test" "$RUNNER_TEMP/variants"
+        run: python -I checker/tests/kill_checks.py metamath-test "$RUNNER_TEMP/variants"
 
   linux:
     name: Checker built by M2-Planet on Linux
@@ -132,17 +129,21 @@ jobs:
       - name: Build the checker
         run: |
           mkdir build
-          checker/build-linux.sh stage0-pe32 "$PWD/build/mmcheck-x86"
+          checker/build-linux.sh stage0-pe32 build/mmcheck-x86
           sha256sum build/mmcheck-x86
 
       - name: Suite
-        run: checker/run-suite.sh "$PWD/build/mmcheck-x86" "$PWD/metamath-test"
+        run: checker/run-suite.sh build/mmcheck-x86 metamath-test
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
 
       - name: Rule cases
-        run: python3 -I checker/tests/compare_rules.py "$PWD/build/mmcheck-x86"
+        run: python -I checker/tests/compare_rules.py build/mmcheck-x86
 
       - name: Corrupted databases
-        run: python3 -I checker/tests/compare_mutants.py 1 "$PWD/build/mmcheck-x86" "$PWD/metamath-test" "$MUTANT_DIVISOR"
+        run: python -I checker/tests/compare_mutants.py 1 build/mmcheck-x86 metamath-test "$MUTANT_DIVISOR"
 
       - name: Fetch a current set.mm
         run: |
@@ -199,15 +200,19 @@ jobs:
 
       - name: Suite
         shell: bash
-        run: checker/run-suite.sh "$PWD/build/mmcheck.exe" "$PWD/metamath-test"
+        run: checker/run-suite.sh build/mmcheck.exe metamath-test
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
 
       - name: Rule cases
         shell: pwsh
-        run: python -I checker/tests/compare_rules.py "$PWD/build/mmcheck.exe"
+        run: python -I checker/tests/compare_rules.py build/mmcheck.exe
 
       - name: Corrupted databases
         shell: pwsh
-        run: python -I checker/tests/compare_mutants.py 1 "$PWD/build/mmcheck.exe" "$PWD/metamath-test" $env:MUTANT_DIVISOR
+        run: python -I checker/tests/compare_mutants.py 1 build/mmcheck.exe metamath-test $env:MUTANT_DIVISOR
 
       - name: Fetch a current set.mm
         shell: bash

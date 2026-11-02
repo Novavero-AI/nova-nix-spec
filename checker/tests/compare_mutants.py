@@ -212,6 +212,7 @@ def trial(mmcheck, verify, data, kind):
 
 def main():
     seed, mmcheck, suite, divisor = sys.argv[1:5]
+    mmcheck = os.path.abspath(mmcheck)
     verify = str(pathlib.Path(__file__).with_name("verify.py"))
     rng = random.Random(int(seed))
     jobs = []

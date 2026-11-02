@@ -100,7 +100,7 @@ def one(source_lines, index, work, cases, suite):
 
 
 def main():
-    suite, work = sys.argv[1:3]
+    suite, work = (os.path.abspath(a) for a in sys.argv[1:3])
     source = pathlib.Path(__file__).parent.parent / "mmcheck.c"
     pathlib.Path(work).mkdir(parents=True, exist_ok=True)
     lines = pathlib.Path(source).read_text().split("\n")

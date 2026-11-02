@@ -13,7 +13,11 @@ fi
 
 source_file=$(cd "$(dirname "$0")" && pwd)/mmcheck.c
 stage0=$(cd "$1" && pwd)
-output=$2
+# The build runs from inside stage0-pe32, so a relative path is made absolute.
+case $2 in
+  /*) output=$2 ;;
+  *) output=$PWD/$2 ;;
+esac
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 

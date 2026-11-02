@@ -49,7 +49,7 @@ def pipe_is_refused(checker):
 
 
 def main():
-    checker = sys.argv[1]
+    checker = os.path.abspath(sys.argv[1])
     cases = [case for case in load_cases() if case[0] not in KNOWN_DIFFERENCES]
     failed = 0
     if not pipe_is_refused(checker):

@@ -8,7 +8,11 @@ if [ "$#" -ne 2 ]; then
   echo "usage: run-suite.sh CHECKER SUITE_DIR" >&2
   exit 2
 fi
-checker=$1
+# The checker runs from inside the suite, so a relative path is made absolute.
+case $1 in
+  /*) checker=$1 ;;
+  *) checker=$PWD/$1 ;;
+esac
 suite=$2
 failed=0
 

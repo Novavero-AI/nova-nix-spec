@@ -28,7 +28,7 @@ jobs:
 
       - name: No proof rests on sorry
         run: |
-          for file in NixLayer.lean Trust.lean; do
+          for file in NixLayer.lean Trust.lean Metamath.lean; do
             if lake env lean "$file" | grep sorryAx; then
               exit 1
             fi

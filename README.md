@@ -6,6 +6,9 @@ that can be built from a seed.
 - `NixLayer.lean`: ATerm strings, the store path fingerprint, the hash quotient.
 - `Trust.lean`: diverse double-compiling, and a trust list over a build tree,
   including checked edges and what shared ancestry does to them.
+- `Metamath.lean`: Metamath's proof rule, a pure checker, and the proof that the
+  checker only accepts what the rule derives. Parsing, block scoping and the
+  decoding of compressed proofs are outside it, and it is not a proof of `mmcheck`.
 - `checker/`: `mmcheck`, a Metamath proof checker.
 - `experiments/`: small standalone files.
 

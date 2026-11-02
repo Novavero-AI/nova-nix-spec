@@ -1,0 +1,53 @@
+name: M2-Planet
+
+# Runs M2-Planet's own test suite at a ref of the fork, on the two
+# architectures a hosted runner executes, the way upstream's CI does. The
+# self-host proof is printed because it can only be produced by running the
+# self-built compiler, so a change to the compiler needs its hash from here.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch or commit of Novavero-AI/M2-Planet
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  suite:
+    name: ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, x86]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: Novavero-AI/M2-Planet
+          ref: ${{ inputs.ref }}
+          submodules: recursive
+
+      - name: Install mescc-tools
+        run: |
+          git clone --recurse-submodules --depth=1 https://github.com/oriansj/mescc-tools "$RUNNER_TEMP/mescc-tools"
+          make -C "$RUNNER_TEMP/mescc-tools" install -j"$(nproc)"
+
+      - name: Build
+        run: make
+
+      - name: Test
+        env:
+          GET_MACHINE_FLAGS: --override ${{ matrix.arch }}
+        run: make test
+
+      - name: Self-host proof
+        if: always()
+        run: |
+          if [ -f test/test1000/proof ]; then
+            sha256sum test/test1000/proof
+          else
+            echo "no proof was produced"
+          fi

@@ -102,6 +102,26 @@ jobs:
         working-directory: metamath-test
         run: time ../build/mmcheck-x86 set.mm
 
+      - name: Show where it crashed
+        if: failure()
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gdb
+          cd stage0-pe32/M2-Planet
+          tools=../mescc-tools/bin
+          ./bin/M2-Planet --architecture x86 --expand-includes --debug \
+            "$GITHUB_WORKSPACE/checker/mmcheck.c" -o /tmp/debug.M1
+          "$tools/blood-elf" -f /tmp/debug.M1 --little-endian --entry _start -o /tmp/footer.M1
+          "$tools/M1" --little-endian --architecture x86 -f M2libc/x86/x86_defs.M1 \
+            -f M2libc/x86/libc-full.M1 -f /tmp/debug.M1 -f /tmp/footer.M1 -o /tmp/debug.hex2
+          "$tools/hex2" --little-endian --architecture x86 --base-address 0x08048000 \
+            -f M2libc/x86/ELF-x86-debug.hex2 -f /tmp/debug.hex2 -o /tmp/mmcheck-debug
+          cd "$GITHUB_WORKSPACE/metamath-test"
+          for database in hol.mm big-unifier.mm peano-fixed.mm; do
+            gdb -q -batch -ex run -ex bt -ex 'info registers eip eax ebx ecx esp ebp' \
+              -ex 'x/8i $eip-12' --args /tmp/mmcheck-debug "$database" 2>&1 | tail -32
+          done
+
   windows:
     name: Checker built from the seed on Windows
     runs-on: windows-latest

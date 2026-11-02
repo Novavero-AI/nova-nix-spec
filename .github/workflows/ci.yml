@@ -1,0 +1,158 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  STAGE0_PE32_REF: 6e5acc5c37ecfa1cde1ced7bce07ae8904f6958a
+  METAMATH_TEST_REF: 5758bf781bab662d4b31c7f72ac4dedea74fcb0f
+
+jobs:
+  lean:
+    name: Lean
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: leanprover/lean-action@v1
+
+      - name: No proof rests on sorry
+        run: |
+          for file in NixLayer.lean Trust.lean; do
+            if lake env lean "$file" | grep sorryAx; then
+              exit 1
+            fi
+          done
+
+  host:
+    name: Checker under gcc and sanitizers
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: david-a-wheeler/metamath-test
+          ref: ${{ env.METAMATH_TEST_REF }}
+          path: metamath-test
+
+      - name: Build with warnings as errors
+        run: |
+          mkdir build
+          gcc -std=c99 -O2 -Wall -Wextra -Wpedantic -Wstrict-prototypes -Wshadow -Werror \
+            -o build/mmcheck checker/mmcheck.c
+          gcc -std=c99 -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined \
+            -o build/mmcheck-san checker/mmcheck.c
+
+      - name: Suite
+        run: checker/run-suite.sh "$PWD/build/mmcheck" "$PWD/metamath-test"
+
+      - name: Suite under sanitizers
+        run: checker/run-suite.sh "$PWD/build/mmcheck-san" "$PWD/metamath-test"
+
+  linux:
+    name: Checker built by M2-Planet on Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Novavero-AI/stage0-pe32
+          ref: ${{ env.STAGE0_PE32_REF }}
+          path: stage0-pe32
+          submodules: recursive
+
+      - uses: actions/checkout@v7
+        with:
+          repository: david-a-wheeler/metamath-test
+          ref: ${{ env.METAMATH_TEST_REF }}
+          path: metamath-test
+
+      # The M2-Planet makefile lists headers among the inputs of a rule using
+      # -o, so its sources are compiled directly.
+      - name: Build the toolchain
+        run: |
+          make -C stage0-pe32/mescc-tools
+          cd stage0-pe32/M2-Planet
+          mkdir -p bin
+          gcc -D_GNU_SOURCE -O2 -std=c99 -w -o bin/M2-Planet \
+            M2libc/bootstrappable.c cc_reader.c cc_strings.c cc_types.c cc_emit.c \
+            cc_core.c cc_macro.c cc.c cc_globals.c
+
+      - name: Build the checker
+        run: |
+          mkdir build
+          checker/build-linux.sh stage0-pe32 "$PWD/build/mmcheck-x86"
+          sha256sum build/mmcheck-x86
+
+      - name: Suite
+        run: checker/run-suite.sh "$PWD/build/mmcheck-x86" "$PWD/metamath-test"
+
+      - name: Read set.mm
+        working-directory: metamath-test
+        run: time ../build/mmcheck-x86 set.mm
+
+  windows:
+    name: Checker built from the seed on Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      # The runner's Git rewrites line endings on checkout, and the chain has
+      # to read the bytes that were committed.
+      - name: Keep committed line endings
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: Novavero-AI/stage0-pe32
+          ref: ${{ env.STAGE0_PE32_REF }}
+          path: stage0-pe32
+          submodules: recursive
+
+      - uses: actions/checkout@v7
+        with:
+          repository: david-a-wheeler/metamath-test
+          ref: ${{ env.METAMATH_TEST_REF }}
+          path: metamath-test
+
+      - name: Build the chain from the seed
+        shell: cmd
+        run: stage0-pe32\x86\mescc-tools-mini.cmd
+
+      - name: hex0 reproduces the seed
+        shell: pwsh
+        run: |
+          $seed = (Get-FileHash stage0-pe32/bootstrap-seeds/PE32/i386/hex0-seed.exe).Hash
+          $hex0 = (Get-FileHash stage0-pe32/x86/artifact/hex0.exe).Hash
+          if ($seed -ne $hex0) { throw "hex0.exe is not the seed: $hex0, expected $seed" }
+
+      - name: Build the checker with the chain
+        shell: cmd
+        run: checker\build-windows.cmd stage0-pe32 build
+
+      - name: Hash the checker
+        shell: pwsh
+        run: Get-FileHash build/mmcheck.exe
+
+      - name: Suite
+        shell: bash
+        run: checker/run-suite.sh "$PWD/build/mmcheck.exe" "$PWD/metamath-test"
+
+      - name: Read set.mm
+        shell: pwsh
+        working-directory: metamath-test
+        run: |
+          Measure-Command { ..\build\mmcheck.exe set.mm | Out-Host }
+          if ($LASTEXITCODE -ne 0) { throw "set.mm refused" }

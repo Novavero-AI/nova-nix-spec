@@ -40,3 +40,8 @@ it with no other compiler.
 - `checker/build-windows.cmd` builds it with the tools a
   [stage0-pe32](https://github.com/Novavero-AI/stage0-pe32) checkout built from
   its seed.
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). `Seed/Bytes.lean` is
+the exception: it copies GPL-3.0-or-later sources and keeps their terms.

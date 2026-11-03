@@ -15,6 +15,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # The same commit as STAGE0_PE32_REF in ci.yml.
+  STAGE0_PE32_REF: d27eb1753a5a83cf2aa5d45fe0b341e3924e4f6b
+  MESCC_TOOLS_REF: d59464d2641de8a90032ad2456bdb34b4db3436a
+
 jobs:
   suite:
     name: ${{ matrix.arch }}
@@ -39,7 +44,9 @@ jobs:
 
       - name: Install mescc-tools
         run: |
-          git clone --recurse-submodules --depth=1 https://github.com/oriansj/mescc-tools "$RUNNER_TEMP/mescc-tools"
+          git clone https://github.com/oriansj/mescc-tools "$RUNNER_TEMP/mescc-tools"
+          git -C "$RUNNER_TEMP/mescc-tools" checkout "$MESCC_TOOLS_REF"
+          git -C "$RUNNER_TEMP/mescc-tools" submodule update --init --recursive
           make -C "$RUNNER_TEMP/mescc-tools" install -j"$(nproc)"
 
       - name: Build
@@ -75,7 +82,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: Novavero-AI/stage0-pe32
-          ref: 6e5acc5c37ecfa1cde1ced7bce07ae8904f6958a
+          ref: ${{ env.STAGE0_PE32_REF }}
           path: stage0-pe32
           submodules: recursive
 

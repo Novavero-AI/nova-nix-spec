@@ -114,6 +114,14 @@ jobs:
       - name: Seed and decode agree
         run: python -I scripts/seed_behaviour.py "${{ matrix.seed }}" "${{ matrix.decode }}" "${{ matrix.known }}"
 
+      # The windows job checks the same of the PE32 seed, as the first step of
+      # its chain.
+      - name: The seed rebuilds itself from its annotated source
+        if: runner.os == 'Linux'
+        run: |
+          bootstrap-seeds/POSIX/x86/hex0-seed bootstrap-seeds/POSIX/x86/hex0_x86.hex0 "$RUNNER_TEMP/hex0"
+          cmp bootstrap-seeds/POSIX/x86/hex0-seed "$RUNNER_TEMP/hex0"
+
   # The checker's own build on each operating system nova-nix ships for. The
   # Windows job keeps Git's CRLF checkout, so the databases there carry CRLF.
   host:

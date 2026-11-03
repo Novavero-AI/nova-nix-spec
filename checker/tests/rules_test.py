@@ -553,6 +553,7 @@ CASES += [
     ("dollar in a variable", b"$v a$b $.\n", ""),
     ("$d on a hypothesis label", p(b"$d wp x $.\n"), ""),
     ("$f on a hypothesis label", p(b"bad $f wff wq $.\n"), ""),
+    ("$f closed by the end of a block", p(b"$v t $.\n${ a $f wff t $} $}\n"), "may not occur here"),
     (
         "stack entry is a proper prefix of the hypothesis",
         p(PREFIX_AXIOM + b"${ th.1 $e |- q $. th $p |- q $= wq th.1 ax $. $}\n"),

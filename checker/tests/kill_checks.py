@@ -1,10 +1,12 @@
-"""Removes each die() from mmcheck.c in turn and asks whether any test notices.
+"""Removes each die() from mmcheck.c in turn, except those LEFT_OUT matches, and
+asks whether any test notices.
 
 A surviving variant gets every verdict right with that check gone, so the check
 is untested or redundant. Variants build with sanitizers, so a memory guard
 counts as noticed when removing it faults. Capacity limits are left out, since
 reaching them takes huge inputs, as are invariants nothing can reach and the
-checks that need a read to fail partway through a file.
+checks on opening and reading a file. A variant that does not compile fails the
+run, since its check has not been tried.
 
 Usage: kill_checks.py SUITE_DIR WORK_DIR
 """
@@ -18,7 +20,8 @@ import sys
 import tempfile
 
 LEFT_OUT = re.compile(
-    r"too many|too deep|too deeply|exhausted|too long|too large|out of memory|cannot read"
+    r"too many|too deep|too deeply|exhausted|\$d too long|expression too long|too large"
+    r"|out of memory|cannot read"
     r"|no substitution|before its length|past its length"
 )
 SANITIZER_STATUS = 99
@@ -85,17 +88,14 @@ def one(source_lines, index, work, cases, suite):
     path = pathlib.Path(work, f"v{index}.c")
     path.write_text("\n".join(variant) + "\n")
     binary = str(path.with_suffix(""))
-    built = subprocess.run(
+    subprocess.run(
         [
             "cc", "-std=c99", "-O1", "-g", "-w",
             "-fsanitize=address,undefined", "-fno-sanitize-recover=undefined",
             "-o", binary, str(path),
         ],
-        capture_output=True,
-        text=True,
+        check=True,
     )
-    if built.returncode != 0:
-        return index, line.strip(), "did not compile: " + built.stderr[:100]
     return index, line.strip(), caught(binary, cases, suite)
 
 
@@ -105,11 +105,11 @@ def main():
     pathlib.Path(work).mkdir(parents=True, exist_ok=True)
     lines = pathlib.Path(source).read_text().split("\n")
     cases = load_cases()
-    sites = [
-        i for i, l in enumerate(lines)
-        if re.search(r"\bdie\(\"", l) and not l.startswith("void die") and not LEFT_OUT.search(l)
+    checks = [
+        i for i, l in enumerate(lines) if re.search(r"\bdie\(\"", l) and not l.startswith("void die")
     ]
-    print(f"{len(sites)} checks, {len(cases)} rule cases", flush=True)
+    sites = [i for i in checks if not LEFT_OUT.search(lines[i])]
+    print(f"removing {len(sites)} of {len(checks)} checks, {len(cases)} rule cases", flush=True)
     results = []
     with concurrent.futures.ThreadPoolExecutor(WORKERS) as pool:
         futures = [pool.submit(one, lines, i, work, cases, suite) for i in sites]

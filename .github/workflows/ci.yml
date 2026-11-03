@@ -137,6 +137,12 @@ jobs:
             cflags: -D_CRT_SECURE_NO_WARNINGS
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    # On Linux a sanitizer fault exits 1 by default, which reads as a refusal.
+    # Status 99 reads as a crash, and every test fails on one. Leaks are not
+    # checked: the checker frees nothing and leaves that to exit.
+    env:
+      ASAN_OPTIONS: exitcode=99:detect_leaks=0
+      UBSAN_OPTIONS: exitcode=99:halt_on_error=1
     defaults:
       run:
         shell: bash
@@ -174,6 +180,10 @@ jobs:
       - name: Suite under sanitizers
         if: runner.os != 'Windows'
         run: checker/run-suite.sh build/mmcheck-san metamath-test
+
+      - name: Rule cases under sanitizers
+        if: runner.os != 'Windows'
+        run: python -I checker/tests/compare_rules.py build/mmcheck-san
 
       - name: A test notices each check being removed
         if: runner.os != 'Windows'

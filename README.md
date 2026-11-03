@@ -25,9 +25,12 @@ that can be built from a seed.
 ```sh
 python3 scripts/seed_bytes.py BOOTSTRAP_SEEDS_DIR STAGE0_PE32_DIR
 lake build
+lake env lean scripts/AxiomAudit.lean
 ```
 
-`#print axioms` in each file lists what its theorems rest on.
+`scripts/AxiomAudit.lean` fails unless every declaration in the five libraries
+rests on no axiom beyond `propext`, `Classical.choice` and `Quot.sound`, so a
+`sorry`, a `native_decide` or a declared `axiom` fails it.
 
 ## mmcheck
 

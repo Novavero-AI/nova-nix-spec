@@ -11,7 +11,10 @@ import subprocess
 import sys
 import tempfile
 
-# Where the specification leaves room, and mmcheck and verify.py each chose.
+PIPE = "/dev/stdin"
+
+# Where the specification leaves room, and mmcheck and verify.py each chose. On
+# these the checker has to give the verdict verify.py does not.
 KNOWN_DIFFERENCES = {
     "comment close at bare eof": "mmcheck takes end of file as white space",
     "included file ends in bare close": "mmcheck takes end of file as white space",
@@ -41,23 +44,26 @@ def status_of(checker, files):
 
 def pipe_is_refused(checker):
     """A pipe has no length to read up to, so a failed read could pass as its end."""
-    if not os.path.exists("/dev/stdin"):
-        return True
     return subprocess.run(
-        [checker, "/dev/stdin"], input=b"$c a $.\n", capture_output=True, timeout=60
+        [checker, PIPE], input=b"$c a $.\n", capture_output=True, timeout=60
     ).returncode == 1
 
 
 def main():
     checker = os.path.abspath(sys.argv[1])
-    cases = [case for case in load_cases() if case[0] not in KNOWN_DIFFERENCES]
+    cases = load_cases()
     failed = 0
-    if not pipe_is_refused(checker):
+    if not os.path.exists(PIPE):
+        print(f"skipped the pipe case: there is no {PIPE}")
+    elif not pipe_is_refused(checker):
         failed += 1
         print("FAILED a pipe was not refused")
     for name, files, expected in cases:
+        refused = expected is not None
+        if name in KNOWN_DIFFERENCES:
+            refused = not refused
         status = status_of(checker, files)
-        if status != (0 if expected is None else 1):
+        if status != (1 if refused else 0):
             failed += 1
             print(f"FAILED {name}: status {status}")
     print(f"{len(cases)} cases, {failed} failed, {len(KNOWN_DIFFERENCES)} known differences")

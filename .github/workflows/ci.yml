@@ -73,6 +73,10 @@ jobs:
             seed: stage0-pe32/bootstrap-seeds/PE32/i386/hex0-seed.exe
             decode: .lake/build/bin/decode.exe
             known: none
+          - os: windows-11-arm
+            seed: stage0-pe32/bootstrap-seeds/PE32/i386/hex0-seed.exe
+            decode: .lake/build/bin/decode.exe
+            known: none
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -235,9 +239,15 @@ jobs:
       - name: Check a current set.mm
         run: time build/mmcheck-x86 set-current.mm
 
+  # The chain and the checker are 32-bit x86 on both runners: x64 Windows runs
+  # them on the CPU through WOW64, and ARM64 Windows through its x86 emulator.
   windows:
-    name: Checker built from the seed on Windows
-    runs-on: windows-latest
+    name: Checker built from the seed on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
       # The runner's Git rewrites line endings on checkout, and the chain has

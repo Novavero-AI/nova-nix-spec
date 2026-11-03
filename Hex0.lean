@@ -1,6 +1,7 @@
-/-! hex0 as a pure function: the rule a hex0 binary follows, written so that
-proofs can be about it. Two hex digits make a byte, and `#` or `;` starts a
-comment that runs to the end of the line. -/
+/-! hex0 as a pure function, written so that proofs can be about it. Two hex
+digits make a byte, and `#` or `;` starts a comment that runs to the end of the
+line. This is the rule the Windows PE32 seed follows. The upstream Linux x86
+seed also takes `G` and `g` as a digit worth 16. -/
 namespace Hex0
 
 /-- A hex digit's value, if the byte is one. -/

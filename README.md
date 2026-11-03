@@ -9,7 +9,9 @@ that can be built from a seed.
 - `Metamath.lean`: Metamath's proof rule, a pure checker, and the proof that the
   checker only accepts what the rule derives. Parsing, block scoping and the
   decoding of compressed proofs are outside it, and it is not a proof of `mmcheck`.
-- `Hex0.lean`: hex0 as a pure function, and proofs about it.
+- `Hex0.lean`: hex0 as a pure function, and proofs about it. It is the rule the
+  Windows PE32 seed follows. The upstream Linux x86 seed also takes `G` and `g`
+  as a digit worth 16.
 - `Seed.lean`: each hex0 seed, Linux x86 and Windows PE32, is exactly what its
   annotated source decodes to.
 - `checker/`: `mmcheck`, a Metamath proof checker.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """One small database per rule of the Metamath specification, for verify.py.
 
-Usage: python3 -I rules_test.py /path/to/verify.py
+Usage: python3 -I rules_test.py VERIFY_PY
 
 A refusal case names a fragment of the expected message, so that a database
 refused for the wrong rule counts as a failure. Accept cases cover what the
@@ -610,8 +610,9 @@ def check(name, files, expected, verifier, root):
 
 
 def main():
-    verifier = sys.argv[1]
-    root = pathlib.Path(verifier).resolve().parent
+    # Each case runs from its own directory, so a relative path is made absolute.
+    verifier = pathlib.Path(sys.argv[1]).resolve()
+    root = verifier.parent
     failures = 0
     for name, files, expected in CASES:
         problem = check(name, files, expected, verifier, root)

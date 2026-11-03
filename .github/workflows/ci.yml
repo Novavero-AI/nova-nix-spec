@@ -244,6 +244,9 @@ jobs:
       - name: Rule cases
         run: python -I checker/tests/compare_rules.py build/mmcheck-x86
 
+      - name: Refusal reasons of verify.py
+        run: python -I checker/tests/rules_test.py checker/tests/verify.py
+
       - name: Corrupted databases
         run: python -I checker/tests/compare_mutants.py 1 build/mmcheck-x86 metamath-test "$MUTANT_DIVISOR"
 

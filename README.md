@@ -46,11 +46,18 @@ it with no other compiler.
 - `checker/run-suite.sh CHECKER SUITE_DIR` runs a build over a checkout of
   [metamath-test](https://github.com/david-a-wheeler/metamath-test).
 - `checker/tests/compare_rules.py CHECKER` runs one small database per rule.
-- `checker/tests/compare_mutants.py SEED CHECKER SUITE_DIR DIVISOR` corrupts real
-  databases and requires the verdict of `verify.py`, a second verifier written
-  from the specification alone.
+- `checker/tests/rules_test.py VERIFY_PY` runs `verify.py`, a second verifier in
+  Python, over the same databases, and checks the reason for each refusal where
+  the case names one.
+- `checker/tests/compare_mutants.py SEED CHECKER SUITE_DIR DIVISOR` corrupts the
+  tokens, statements and proofs of real databases and requires the verdict of
+  `verify.py`. Mutants are built from the databases' tokens, with comments
+  dropped and single spaces between, and none of those databases includes a
+  file, so bytes, comments, white space, includes and end of file are left to
+  the rule cases.
 - `checker/tests/kill_checks.py SUITE_DIR WORK_DIR` removes each check from
-  `mmcheck.c` in turn and requires a test to notice.
+  `mmcheck.c` in turn, except capacity limits, invariants no input reaches and
+  the checks on opening and reading a file, and requires a test to notice.
 - `checker/build-linux.sh` builds it with M2-Planet for 32-bit Linux.
 - `checker/build-windows.cmd` builds it with the tools a
   [stage0-pe32](https://github.com/Novavero-AI/stage0-pe32) checkout built from

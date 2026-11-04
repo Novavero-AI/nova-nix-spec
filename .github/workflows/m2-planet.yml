@@ -17,7 +17,7 @@ permissions:
 
 env:
   # The same commit as STAGE0_PE32_REF in ci.yml.
-  STAGE0_PE32_REF: d27eb1753a5a83cf2aa5d45fe0b341e3924e4f6b
+  STAGE0_PE32_REF: ff1c2ad86a91d3d7d086722ffed49dfe18dd50d0
   MESCC_TOOLS_REF: d59464d2641de8a90032ad2456bdb34b4db3436a
 
 jobs:

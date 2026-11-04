@@ -37,6 +37,7 @@
 #define MAX_STACK 65536
 #define MAX_TAGS 65536
 #define MAX_LABELS 65536
+#define MAX_INT_DIGITS 10 /* Every count printed is below 2^31, so ten digits */
 #define MAX_STEP 16777216 /* Small enough that 20 * MAX_STEP fits 31 bits */
 #define MAX_FILE_BYTES 1073741823
 
@@ -131,10 +132,24 @@ int* new_ints(int n)
 	return p;
 }
 
+/* N is a count, so never negative. */
 void put_int(int n)
 {
-	if(9 < n) put_int(n / 10);
-	fputc('0' + (n % 10), stdout);
+	char digits[MAX_INT_DIGITS];
+	int i = 0;
+	digits[0] = '0';
+	if(0 == n) i = 1;
+	while(0 < n)
+	{
+		digits[i] = '0' + (n % 10);
+		n = n / 10;
+		i = i + 1;
+	}
+	while(0 < i)
+	{
+		i = i - 1;
+		fputc(digits[i], stdout);
+	}
 }
 
 int streq(char* a, char* b)
@@ -262,10 +277,7 @@ char* raw_token(void)
 	while(cur_pos < cur_len && !is_space(cur_buf[cur_pos])) cur_pos = cur_pos + 1;
 	cur_buf[cur_pos] = 0;
 	if(cur_pos < cur_len) cur_pos = cur_pos + 1;
-	/* Not &cur_buf[start]: in &p[i] on a pointer, M2-Planet starts from the
-	 * address of p and not from its value, both at the stage0-pe32 pin and at
-	 * upstream ebfecc2. This can change once a pinned compiler gets it right. */
-	return cur_buf + start;
+	return &cur_buf[start];
 }
 
 int has_dollar(char* t)
